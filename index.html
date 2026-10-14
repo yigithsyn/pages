@@ -112,6 +112,11 @@
                 <span class="d-none sm:d-inline">New</span>
             </button>
 
+            <button id="downloadJson" class="btn-outline" type="button" title="Download JSON" aria-label="Download JSON">
+                <i class="bi bi-download" aria-hidden="true"></i>
+                <span class="d-none sm:d-inline">JSON</span>
+            </button>
+
             <div class="btn-group" role="group" aria-label="Page orientation">
                 <button type="button" class="btn-outline active" data-orientation="portrait" aria-pressed="true" title="Portrait">
                     <i class="bi bi-phone" aria-hidden="true"></i>
@@ -240,14 +245,28 @@
         const pages = [];
         let current = 0;
 
+        function getState() {
+            return {
+                current,
+                pages: pages.map(p => ({ orientation: p.classList.contains("landscape") ? "landscape" : "portrait" }))
+            };
+        }
+
         function saveState() {
             try {
-                localStorage.setItem(STATE_KEY, JSON.stringify({
-                    current,
-                    pages: pages.map(p => ({ orientation: p.classList.contains("landscape") ? "landscape" : "portrait" }))
-                }));
+                localStorage.setItem(STATE_KEY, JSON.stringify(getState()));
             } catch { /* storage unavailable or full: keep working in memory */ }
         }
+
+        document.getElementById("downloadJson").addEventListener("click", () => {
+            const blob = new Blob([JSON.stringify(getState(), null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "workspaces.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        });
 
         function loadState() {
             try {
