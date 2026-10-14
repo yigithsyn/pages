@@ -50,13 +50,38 @@
         /* Workspace: the page always fits inside the gray area (no overflow) at a 1 : 1.4142 ratio. */
         .workspace {
             --paper-ratio: 1.4142;
+            position: relative;
             min-width: 0;
-            padding: 1rem;
+            padding: 1rem 4rem 1rem 1rem;
             container-type: size;
             background-color: var(--bs-bg-4);
         }
         @media (min-width: 768px) {
-            .workspace { padding: 1.5rem; }
+            .workspace { padding: 1.5rem 4rem; }
+        }
+        /* Floating page switcher in the right gutter */
+        .page-nav {
+            position: absolute;
+            inset-block: 0;
+            inset-inline-end: .5rem;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: .5rem;
+            pointer-events: none;
+        }
+        .page-nav > * { pointer-events: auto; }
+        .page-nav .btn-solid { box-shadow: var(--bs-box-shadow); }
+        .page-counter {
+            padding: .125rem .5rem;
+            font-size: var(--bs-font-size-sm);
+            font-variant-numeric: tabular-nums;
+            color: var(--bs-fg-body);
+            background-color: var(--bs-bg-body);
+            border-radius: 1rem;
+            box-shadow: var(--bs-box-shadow);
         }
         .paper {
             width: min(100cqw, 100cqh / var(--paper-ratio));
@@ -82,6 +107,11 @@
         </div>
 
         <div class="d-flex align-items-center gap-2">
+            <button id="addPage" class="btn-solid theme-primary" type="button" title="New workspace" aria-label="New workspace">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                <span class="d-none sm:d-inline">New</span>
+            </button>
+
             <div class="btn-group" role="group" aria-label="Page orientation">
                 <button type="button" class="btn-outline active" data-orientation="portrait" aria-pressed="true" title="Portrait">
                     <i class="bi bi-phone" aria-hidden="true"></i>
@@ -123,7 +153,17 @@
         </dialog>
 
         <main class="workspace flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden">
-            <div id="paper" class="paper bg-body border"></div>
+            <div id="pages" class="d-contents"></div>
+
+            <div class="page-nav" role="group" aria-label="Workspace navigation">
+                <button id="prevPage" class="btn-solid theme-secondary btn-icon" type="button" aria-label="Previous workspace" title="Previous workspace">
+                    <i class="bi bi-chevron-up" aria-hidden="true"></i>
+                </button>
+                <span id="pageCounter" class="page-counter" aria-live="polite">1 / 1</span>
+                <button id="nextPage" class="btn-solid theme-secondary btn-icon" type="button" aria-label="Next workspace" title="Next workspace">
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+            </div>
         </main>
     </div>
 
@@ -189,20 +229,57 @@
             if (!localStorage.getItem("theme")) applyTheme(e.matches ? "dark" : "light");
         });
 
-        // Page orientation
-        const paper = document.getElementById("paper");
+        // Workspaces (pages): one visible at a time, each with its own orientation
+        const pagesHost = document.getElementById("pages");
         const pageStyle = document.getElementById("pageOrientationStyle");
-        const buttons = document.querySelectorAll("[data-orientation]");
-        buttons.forEach(btn => btn.addEventListener("click", () => {
-            const orientation = btn.dataset.orientation;
-            paper.classList.toggle("landscape", orientation === "landscape");
+        const orientationButtons = document.querySelectorAll("[data-orientation]");
+        const prevPage = document.getElementById("prevPage");
+        const nextPage = document.getElementById("nextPage");
+        const pageCounter = document.getElementById("pageCounter");
+        const pages = [];
+        let current = 0;
+
+        function setOrientation(orientation) {
+            pages[current].classList.toggle("landscape", orientation === "landscape");
+            renderOrientation();
+        }
+
+        function renderOrientation() {
+            const orientation = pages[current].classList.contains("landscape") ? "landscape" : "portrait";
             pageStyle.textContent = `@page { size: A4 ${orientation}; }`;
-            buttons.forEach(b => {
-                const on = b === btn;
+            orientationButtons.forEach(b => {
+                const on = b.dataset.orientation === orientation;
                 b.classList.toggle("active", on);
                 b.setAttribute("aria-pressed", on);
             });
-        }));
+        }
+
+        function showPage(index) {
+            current = index;
+            pages.forEach((p, i) => p.hidden = i !== current);
+            pageCounter.textContent = `${current + 1} / ${pages.length}`;
+            prevPage.disabled = current === 0;
+            nextPage.disabled = current === pages.length - 1;
+            renderOrientation();
+        }
+
+        function addPage() {
+            const page = document.createElement("div");
+            page.className = "paper bg-body border";
+            page.setAttribute("role", "region");
+            page.setAttribute("aria-label", `Workspace ${pages.length + 1}`);
+            // New workspaces start with the current orientation
+            if (pages[current]?.classList.contains("landscape")) page.classList.add("landscape");
+            pagesHost.append(page);
+            pages.push(page);
+            showPage(pages.length - 1);
+        }
+
+        orientationButtons.forEach(btn => btn.addEventListener("click", () => setOrientation(btn.dataset.orientation)));
+        document.getElementById("addPage").addEventListener("click", addPage);
+        prevPage.addEventListener("click", () => showPage(current - 1));
+        nextPage.addEventListener("click", () => showPage(current + 1));
+        addPage();
     </script>
 
 </body>
