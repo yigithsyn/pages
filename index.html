@@ -5,14 +5,205 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Paper V2</title>
 
+    <!-- Apply the saved (or system) color mode before first paint to avoid a flash -->
+    <script>
+        document.documentElement.dataset.bsTheme = localStorage.getItem("theme")
+            || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    </script>
+
     <!-- Boostrap v6 -->
     <link href="node_modules/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="node_modules/bootstrap-icons/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <style>
+        /* Below md the sidebar is a Bootstrap drawer; from md up it is an inline, collapsible column
+           (Bootstrap's responsive md:drawer hides the header, so the drawer is restyled here instead). */
+        @media (min-width: 768px) {
+            #sidebar {
+                position: static;
+                display: flex;
+                flex-direction: column;
+                flex: none;
+                width: 16rem;
+                max-width: none;
+                height: auto;
+                max-height: none;
+                margin: 0;
+                visibility: visible;
+                transform: none;
+                border-width: 0 var(--bs-border-width) 0 0;
+                border-radius: 0;
+                box-shadow: none;
+                transition: width .2s ease;
+            }
+            #sidebar.sidebar-hidden { display: none; }
+            #sidebar.sidebar-collapsed { width: 4.25rem; }
+            #sidebar.sidebar-collapsed .drawer-title,
+            #sidebar.sidebar-collapsed .sidebar-label { display: none; }
+            #sidebar.sidebar-collapsed .drawer-header { justify-content: center; }
+            #sidebar.sidebar-collapsed .list-group-item { justify-content: center; }
+            #sidebar.sidebar-collapsed #sidebarCollapse .bi { transform: scaleX(-1); }
+        }
+
+        /* Workspace: the page always fits inside the gray area (no overflow) at a 1 : 1.4142 ratio. */
+        .workspace {
+            --paper-ratio: 1.4142;
+            min-width: 0;
+            padding: 1rem;
+            container-type: size;
+            background-color: var(--bs-bg-4);
+        }
+        @media (min-width: 768px) {
+            .workspace { padding: 1.5rem; }
+        }
+        .paper {
+            width: min(100cqw, 100cqh / var(--paper-ratio));
+            aspect-ratio: 1 / var(--paper-ratio);
+            box-shadow: var(--bs-box-shadow-lg);
+        }
+        .paper.landscape {
+            width: min(100cqw, 100cqh * var(--paper-ratio));
+            aspect-ratio: var(--paper-ratio) / 1;
+        }
+    </style>
+    <style id="pageOrientationStyle">@page { size: A4 portrait; }</style>
 </head>
-<body>
+<body class="d-flex flex-column vh-100">
+
+    <!-- Main header -->
+    <header class="navbar border-bottom px-2 px-md-3 gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <button id="sidebarToggle" class="btn-text btn-icon" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle sidebar">
+                <i class="bi bi-list fs-4" aria-hidden="true"></i>
+            </button>
+            <a class="navbar-brand m-0" href="#">Paper V2</a>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <div class="btn-group" role="group" aria-label="Page orientation">
+                <button type="button" class="btn-outline active" data-orientation="portrait" aria-pressed="true" title="Portrait">
+                    <i class="bi bi-phone" aria-hidden="true"></i>
+                    <span class="d-none sm:d-inline">Portrait</span>
+                </button>
+                <button type="button" class="btn-outline" data-orientation="landscape" aria-pressed="false" title="Landscape">
+                    <i class="bi bi-phone-landscape" aria-hidden="true"></i>
+                    <span class="d-none sm:d-inline">Landscape</span>
+                </button>
+            </div>
+
+            <button id="themeToggle" class="btn-outline btn-icon" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">
+                <i class="bi bi-moon-stars" aria-hidden="true"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="d-flex flex-grow-1 overflow-hidden">
+
+        <!-- Sidebar: drawer on mobile, collapsible column on md and up -->
+        <dialog id="sidebar" class="drawer drawer-start" tabindex="-1" aria-labelledby="sidebarLabel">
+            <div class="drawer-header">
+                <h5 class="drawer-title" id="sidebarLabel">Menu</h5>
+                <button id="sidebarCollapse" class="btn-text btn-icon d-none md:d-inline-flex ms-auto" type="button" aria-expanded="true" aria-label="Collapse sidebar">
+                    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+                </button>
+                <button type="button" class="btn-close md:d-none" data-bs-dismiss="drawer" aria-label="Close"></button>
+            </div>
+            <div class="drawer-body px-0">
+                <nav aria-label="Main">
+                    <div class="list-group list-group-flush">
+                        <a class="list-group-item list-group-item-action active d-flex align-items-center gap-2" href="#" aria-current="page" title="Widgets">
+                            <i class="bi bi-grid-1x2" aria-hidden="true"></i>
+                            <span class="sidebar-label">Widgets</span>
+                        </a>
+                    </div>
+                </nav>
+            </div>
+        </dialog>
+
+        <main class="workspace flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden">
+            <div id="paper" class="paper bg-body border"></div>
+        </main>
+    </div>
 
     <!-- Bootstrap v6 JS -->
-    <script type="module" src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-     
+    <script type="module">
+        import { Drawer } from "./node_modules/bootstrap/dist/js/bootstrap.bundle.min.js";
+
+        const desktop = window.matchMedia("(min-width: 768px)");
+        const sidebar = document.getElementById("sidebar");
+        const toggle = document.getElementById("sidebarToggle");
+        const collapse = document.getElementById("sidebarCollapse");
+        const drawer = Drawer.getOrCreateInstance(sidebar);
+
+        // Header button: drawer on mobile, show/hide column on desktop
+        toggle.addEventListener("click", () => {
+            if (desktop.matches) {
+                sidebar.classList.toggle("sidebar-hidden");
+                syncToggle();
+            } else {
+                drawer.toggle();
+            }
+        });
+        sidebar.addEventListener("shown.bs.drawer", syncToggle);
+        sidebar.addEventListener("hidden.bs.drawer", syncToggle);
+        desktop.addEventListener("change", syncToggle);
+
+        function syncToggle() {
+            const expanded = desktop.matches
+                ? !sidebar.classList.contains("sidebar-hidden")
+                : sidebar.open;
+            toggle.setAttribute("aria-expanded", expanded);
+        }
+        syncToggle();
+
+        // Sidebar button: collapse to icons / expand
+        collapse.addEventListener("click", () => {
+            const collapsed = sidebar.classList.toggle("sidebar-collapsed");
+            collapse.setAttribute("aria-expanded", !collapsed);
+            collapse.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+        });
+
+        // Color mode: light/dark, remembered; follows the system until the user chooses
+        const root = document.documentElement;
+        const themeToggle = document.getElementById("themeToggle");
+        const themeIcon = themeToggle.querySelector(".bi");
+        const systemDark = window.matchMedia("(prefers-color-scheme: dark)");
+
+        function applyTheme(theme) {
+            root.dataset.bsTheme = theme;
+            const next = theme === "dark" ? "light" : "dark";
+            themeIcon.className = `bi ${theme === "dark" ? "bi-sun" : "bi-moon-stars"}`;
+            themeToggle.setAttribute("aria-label", `Switch to ${next} mode`);
+            themeToggle.title = `Switch to ${next} mode`;
+        }
+        applyTheme(root.dataset.bsTheme);
+
+        themeToggle.addEventListener("click", () => {
+            const theme = root.dataset.bsTheme === "dark" ? "light" : "dark";
+            localStorage.setItem("theme", theme);
+            applyTheme(theme);
+        });
+        systemDark.addEventListener("change", e => {
+            if (!localStorage.getItem("theme")) applyTheme(e.matches ? "dark" : "light");
+        });
+
+        // Page orientation
+        const paper = document.getElementById("paper");
+        const pageStyle = document.getElementById("pageOrientationStyle");
+        const buttons = document.querySelectorAll("[data-orientation]");
+        buttons.forEach(btn => btn.addEventListener("click", () => {
+            const orientation = btn.dataset.orientation;
+            paper.classList.toggle("landscape", orientation === "landscape");
+            pageStyle.textContent = `@page { size: A4 ${orientation}; }`;
+            buttons.forEach(b => {
+                const on = b === btn;
+                b.classList.toggle("active", on);
+                b.setAttribute("aria-pressed", on);
+            });
+        }));
+    </script>
 
 </body>
 </html>
