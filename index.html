@@ -236,12 +236,31 @@
         const prevPage = document.getElementById("prevPage");
         const nextPage = document.getElementById("nextPage");
         const pageCounter = document.getElementById("pageCounter");
+        const STATE_KEY = "workspaces";
         const pages = [];
         let current = 0;
+
+        function saveState() {
+            try {
+                localStorage.setItem(STATE_KEY, JSON.stringify({
+                    current,
+                    pages: pages.map(p => ({ orientation: p.classList.contains("landscape") ? "landscape" : "portrait" }))
+                }));
+            } catch { /* storage unavailable or full: keep working in memory */ }
+        }
+
+        function loadState() {
+            try {
+                const state = JSON.parse(localStorage.getItem(STATE_KEY));
+                if (Array.isArray(state?.pages) && state.pages.length) return state;
+            } catch { /* corrupt data: start fresh */ }
+            return null;
+        }
 
         function setOrientation(orientation) {
             pages[current].classList.toggle("landscape", orientation === "landscape");
             renderOrientation();
+            saveState();
         }
 
         function renderOrientation() {
@@ -261,17 +280,22 @@
             prevPage.disabled = current === 0;
             nextPage.disabled = current === pages.length - 1;
             renderOrientation();
+            saveState();
+        }
+
+        function createPage(orientation) {
+            const page = document.createElement("div");
+            page.className = "paper bg-body border";
+            page.classList.toggle("landscape", orientation === "landscape");
+            page.setAttribute("role", "region");
+            page.setAttribute("aria-label", `Workspace ${pages.length + 1}`);
+            pagesHost.append(page);
+            pages.push(page);
         }
 
         function addPage() {
-            const page = document.createElement("div");
-            page.className = "paper bg-body border";
-            page.setAttribute("role", "region");
-            page.setAttribute("aria-label", `Workspace ${pages.length + 1}`);
             // New workspaces start with the current orientation
-            if (pages[current]?.classList.contains("landscape")) page.classList.add("landscape");
-            pagesHost.append(page);
-            pages.push(page);
+            createPage(pages[current]?.classList.contains("landscape") ? "landscape" : "portrait");
             showPage(pages.length - 1);
         }
 
@@ -279,7 +303,14 @@
         document.getElementById("addPage").addEventListener("click", addPage);
         prevPage.addEventListener("click", () => showPage(current - 1));
         nextPage.addEventListener("click", () => showPage(current + 1));
-        addPage();
+
+        const saved = loadState();
+        if (saved) {
+            saved.pages.forEach(p => createPage(p.orientation));
+            showPage(Math.min(Math.max(Number.isInteger(saved.current) ? saved.current : 0, 0), pages.length - 1));
+        } else {
+            addPage();
+        }
     </script>
 
 </body>
