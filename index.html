@@ -92,8 +92,41 @@
             width: min(100cqw, 100cqh * var(--paper-ratio));
             aspect-ratio: var(--paper-ratio) / 1;
         }
+
+        /* Print: only the workspace pages; each one is exactly one physical A4 sheet in its own orientation. */
+        @page { size: A4 portrait; margin: 0; }
+        @page portrait-sheet { size: A4 portrait; margin: 0; }
+        @page landscape-sheet { size: A4 landscape; margin: 0; }
+        @media print {
+            html, body { height: auto !important; background: none !important; }
+            body { display: block !important; }
+            body > header, #sidebar, .page-nav { display: none !important; }
+            .app-body, .workspace {
+                display: block !important;
+                position: static;
+                height: auto;
+                padding: 0;
+                overflow: visible !important;
+                container-type: normal;
+                background: none;
+            }
+            .paper {
+                display: block !important;
+                width: 210mm;
+                height: 297mm;
+                aspect-ratio: auto;
+                margin: 0;
+                border: 0 !important;
+                box-shadow: none;
+                overflow: hidden;
+                break-inside: avoid;
+                break-after: page;
+                page: portrait-sheet;
+            }
+            .paper.landscape { width: 297mm; height: 210mm; page: landscape-sheet; }
+            .paper:last-child { break-after: auto; }
+        }
     </style>
-    <style id="pageOrientationStyle">@page { size: A4 portrait; }</style>
 </head>
 <body class="d-flex flex-column vh-100">
 
@@ -121,6 +154,11 @@
                 <i class="bi bi-upload" aria-hidden="true"></i>
                 <span class="d-none sm:d-inline">Import</span>
             </button>
+            <button id="printPages" class="btn-outline" type="button" title="Print" aria-label="Print">
+                <i class="bi bi-printer" aria-hidden="true"></i>
+                <span class="d-none sm:d-inline">Print</span>
+            </button>
+
             <input id="importFile" type="file" accept="application/json,.json" hidden>
 
             <div class="btn-group" role="group" aria-label="Page orientation">
@@ -140,7 +178,7 @@
         </div>
     </header>
 
-    <div class="d-flex flex-grow-1 overflow-hidden">
+    <div class="app-body d-flex flex-grow-1 overflow-hidden">
 
         <!-- Sidebar: drawer on mobile, collapsible column on md and up -->
         <dialog id="sidebar" class="drawer drawer-start" tabindex="-1" aria-labelledby="sidebarLabel">
@@ -245,7 +283,6 @@
 
         // Workspaces (pages): one visible at a time, each with its own orientation
         const pagesHost = document.getElementById("pages");
-        const pageStyle = document.getElementById("pageOrientationStyle");
         const orientationButtons = document.querySelectorAll("[data-orientation]");
         const prevPage = document.getElementById("prevPage");
         const nextPage = document.getElementById("nextPage");
@@ -294,7 +331,6 @@
 
         function renderOrientation() {
             const orientation = pages[current].classList.contains("landscape") ? "landscape" : "portrait";
-            pageStyle.textContent = `@page { size: A4 ${orientation}; }`;
             orientationButtons.forEach(b => {
                 const on = b.dataset.orientation === orientation;
                 b.classList.toggle("active", on);
@@ -334,6 +370,10 @@
         document.getElementById("addPage").addEventListener("click", addPage);
         prevPage.addEventListener("click", () => showPage(current - 1));
         nextPage.addEventListener("click", () => showPage(current + 1));
+        // Bootstrap's layered [hidden] rule beats any author style, so reveal every page while printing
+        addEventListener("beforeprint", () => pages.forEach(p => p.hidden = false));
+        addEventListener("afterprint", () => pages.forEach((p, i) => p.hidden = i !== current));
+        document.getElementById("printPages").addEventListener("click", () => window.print());
         deletePageBtn.addEventListener("click", () => {
             if (pages.length <= 1 || !confirm(`Workspace ${current + 1} silinsin mi?`)) return;
             pages.splice(current, 1)[0].remove();
