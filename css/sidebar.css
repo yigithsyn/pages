@@ -1,0 +1,116 @@
+/* Below md the sidebar is a Bootstrap drawer; from md up it is an inline, collapsible column. */
+@media (min-width: 768px) {
+    #sidebar {
+        position: static;
+        display: flex;
+        flex-direction: column;
+        flex: none;
+        width: 17.5rem;
+        max-width: none;
+        height: auto;
+        max-height: none;
+        margin: 0;
+        visibility: visible;
+        transform: none;
+        border-width: 0 var(--bs-border-width) 0 0;
+        border-radius: 0;
+        box-shadow: none;
+        transition: width .2s ease;
+    }
+    #sidebar.sidebar-collapsed { width: 4.5rem; }
+    #sidebar.sidebar-collapsed .sidebar-title,
+    #sidebar.sidebar-collapsed .sidebar-label,
+    #sidebar.sidebar-collapsed .sidebar-user-name { display: none; }
+    #sidebar.sidebar-collapsed .sidebar-brand,
+    #sidebar.sidebar-collapsed .list-group-item,
+    #sidebar.sidebar-collapsed .sidebar-user { justify-content: center; }
+    #sidebar.sidebar-collapsed .sidebar-brand { padding-inline: 0; }
+    #sidebar.sidebar-collapsed .sidebar-user { padding-inline: 0; }
+    #sidebar:not(.sidebar-collapsed) .sidebar-back-btn { display: inline-flex; }
+    #sidebar.sidebar-collapsed .sidebar-back-btn { display: none; }
+}
+
+.sidebar-brand {
+    min-height: 4.25rem;
+    padding: .75rem 1rem;
+}
+.sidebar-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    margin-left: auto;
+    padding: 0;
+    color: var(--bs-emphasis-color);
+    background: transparent;
+    border: 0;
+    border-radius: .5rem;
+}
+.sidebar-back-btn:hover,
+.sidebar-back-btn:focus-visible {
+    background-color: var(--bs-secondary-bg);
+}
+.sidebar-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    flex: 0 0 2.25rem;
+    color: var(--bs-bg-body);
+    background-color: var(--bs-fg-body);
+    border: 0;
+    border-radius: .375rem;
+    cursor: pointer;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+.sidebar-title {
+    color: var(--bs-emphasis-color);
+    font-size: 1.5rem;
+    font-weight: 400;
+    white-space: nowrap;
+}
+.sidebar-nav .list-group-item {
+    min-height: 3rem;
+    padding: .75rem 1rem;
+    border: 0;
+    color: var(--bs-emphasis-color);
+}
+.sidebar-nav .list-group-item:hover,
+.sidebar-nav .list-group-item:focus-visible {
+    background-color: var(--bs-secondary-bg);
+}
+.sidebar-nav .list-group-item.active {
+    color: var(--bs-emphasis-color);
+    background-color: var(--bs-tertiary-bg);
+}
+.sidebar-nav .bi {
+    width: 1.25rem;
+    flex: 0 0 1.25rem;
+    text-align: center;
+    font-size: 1rem;
+}
+.sidebar-user {
+    min-height: 3.5rem;
+    padding: .625rem 1rem;
+    border-top: var(--bs-border-width) solid var(--bs-border-color);
+}
+.sidebar-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 2rem;
+    color: var(--bs-body-bg);
+    background-color: var(--bs-secondary-color);
+    border-radius: 50%;
+    font-size: .9rem;
+}
+.sidebar-user-name {
+    color: var(--bs-emphasis-color);
+    font-weight: 600;
+    white-space: nowrap;
+}

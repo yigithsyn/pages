@@ -1,0 +1,145 @@
+/* Workspace: the page always fits inside the gray area (no overflow) at a 1 : 1.4142 ratio. */
+.workspace {
+    --paper-ratio: 1.4142;
+    position: relative;
+    min-width: 0;
+    padding: 1rem 4rem 1rem 1rem;
+    container-type: size;
+    background-color: var(--bs-bg-4);
+}
+@media (min-width: 768px) {
+    .workspace { padding: 1.5rem 4rem; }
+}
+/* Floating page switcher in the right gutter */
+.page-nav {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: .5rem;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    pointer-events: none;
+}
+.page-nav > * { pointer-events: auto; }
+.page-nav .btn-solid { box-shadow: var(--bs-box-shadow); }
+.page-counter {
+    padding: .125rem .5rem;
+    font-size: var(--bs-font-size-sm);
+    font-variant-numeric: tabular-nums;
+    color: var(--bs-fg-body);
+    background-color: var(--bs-bg-body);
+    border-radius: 1rem;
+    box-shadow: var(--bs-box-shadow);
+}
+.paper {
+    width: min(100cqw, 100cqh / var(--paper-ratio));
+    aspect-ratio: 1 / var(--paper-ratio);
+    box-shadow: var(--bs-box-shadow-lg);
+}
+.paper.landscape {
+    width: min(100cqw, 100cqh * var(--paper-ratio));
+    aspect-ratio: var(--paper-ratio) / 1;
+}
+.paper { position: relative; overflow: hidden; cursor: text; }
+
+/* Text boxes: resizable via the bottom-right handle; textarea while editing, rendered HTML otherwise */
+.text-box {
+    position: absolute;
+    min-width: 3rem;
+    min-height: 2rem;
+    overflow: hidden;
+    cursor: auto;
+    border: 1px dashed transparent;
+}
+.text-box:hover,
+.text-box.editing { border-color: var(--bs-border-color); }
+.text-box textarea {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: .25rem;
+    resize: none;
+    border: 0;
+    outline: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+}
+.text-box .rendered { height: 100%; overflow: auto; padding: .25rem; overflow-wrap: anywhere; }
+.move-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: .75rem;
+    cursor: move;
+    touch-action: none;
+    color: var(--bs-secondary-color);
+    background: var(--bs-bg-body);
+    border-radius: 0 0 0 .25rem;
+    opacity: .45;
+    z-index: 1;
+}
+.text-box:hover .move-handle,
+.text-box.editing .move-handle { opacity: .9; }
+.resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 18px;
+    height: 18px;
+    cursor: nwse-resize;
+    touch-action: none;
+    background: var(--bs-fg-body);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    opacity: .45;
+    z-index: 1;
+}
+.text-box:hover .resize-handle,
+.text-box.editing .resize-handle { opacity: .9; }
+.resize-handle:hover { opacity: 1 !important; }
+.text-box .rendered > :last-child { margin-bottom: 0; }
+.text-box .rendered > :first-child { margin-top: 0; }
+
+/* Print: only the workspace pages; each one is exactly one physical A4 sheet in its own orientation. */
+@page { size: A4 portrait; margin: 0; }
+@page portrait-sheet { size: A4 portrait; margin: 0; }
+@page landscape-sheet { size: A4 landscape; margin: 0; }
+@media print {
+    html, body { height: auto !important; background: none !important; }
+    body { display: block !important; }
+    #sidebar, .page-nav { display: none !important; }
+    .app-body, .workspace {
+        display: block !important;
+        position: static;
+        height: auto;
+        padding: 0;
+        overflow: visible !important;
+        container-type: normal;
+        background: none;
+    }
+    .paper {
+        display: block !important;
+        width: 210mm;
+        height: 297mm;
+        aspect-ratio: auto;
+        margin: 0;
+        border: 0 !important;
+        box-shadow: none;
+        overflow: hidden;
+        break-inside: avoid;
+        break-after: page;
+        page: portrait-sheet;
+    }
+    .paper.landscape { width: 297mm; height: 210mm; page: landscape-sheet; }
+    .paper:last-child { break-after: auto; }
+    .text-box { border-color: transparent !important; }
+    .resize-handle, .move-handle { display: none; }
+}
