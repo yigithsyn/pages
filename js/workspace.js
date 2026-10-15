@@ -8,11 +8,13 @@ const nextPage = document.getElementById("nextPage");
 const pageCounter = document.getElementById("pageCounter");
 const deletePageBtn = document.getElementById("deletePage");
 const STATE_KEY = "workspaces";
+const FORMAT_VERSION = 1;
 const pages = [];
 let current = 0;
 
 function getState() {
     return {
+        version: FORMAT_VERSION,
         current,
         pages: pages.map(p => ({
             orientation: p.classList.contains("landscape") ? "landscape" : "portrait",
@@ -40,7 +42,7 @@ export function downloadJson() {
 function loadState() {
     try {
         const state = JSON.parse(localStorage.getItem(STATE_KEY));
-        if (Array.isArray(state?.pages) && state.pages.length) return state;
+        if (state?.version === FORMAT_VERSION && Array.isArray(state.pages) && state.pages.length) return state;
     } catch { /* corrupt data: start fresh */ }
     return null;
 }
@@ -233,10 +235,11 @@ importInput.addEventListener("change", async () => {
     if (!file) return;
     try {
         const state = JSON.parse(await file.text());
-        if (!Array.isArray(state?.pages) || !state.pages.length) throw new Error("invalid");
+        if (state?.version !== FORMAT_VERSION) throw new Error("unsupported version");
+        if (!Array.isArray(state.pages) || !state.pages.length) throw new Error("invalid");
         applyState(state);
     } catch {
-        alert("Geçersiz JSON dosyası: içe aktarılamadı.");
+        alert("Geçersiz JSON dosyası veya desteklenmeyen sürüm: içe aktarılamadı.");
     }
 });
 
