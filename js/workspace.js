@@ -8,7 +8,8 @@ const nextPage = document.getElementById("nextPage");
 const pageCounter = document.getElementById("pageCounter");
 const deletePageBtn = document.getElementById("deletePage");
 const STATE_KEY = "workspaces";
-const FORMAT_VERSION = 1;
+const FORMAT_VERSION = 2;
+const SUPPORTED_VERSIONS = [1, 2];
 const pages = [];
 let current = 0;
 
@@ -23,14 +24,126 @@ function getState() {
     };
 }
 
-function saveState() {
+// Sessions: each one holds a full workspace state plus a name, all kept in localStorage
+const SESSIONS_KEY = "sessions";
+const sessionNameInput = document.getElementById("sessionName");
+const sessionList = document.getElementById("sessionList");
+let sessions = [];
+let currentSessionId = null;
+
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const emptyState = () => ({ version: FORMAT_VERSION, current: 0, pages: [{ orientation: "portrait", boxes: [] }] });
+
+function persistSessions() {
     try {
-        localStorage.setItem(STATE_KEY, JSON.stringify(getState()));
+        localStorage.setItem(SESSIONS_KEY, JSON.stringify({ currentId: currentSessionId, sessions }));
     } catch { /* storage unavailable or full: keep working in memory */ }
 }
 
+function saveState() {
+    const session = sessions.find(s => s.id === currentSessionId);
+    if (!session) return;
+    const state = getState();
+    if (JSON.stringify(state) === JSON.stringify(session.state)) return;
+    session.state = state;
+    session.updated = Date.now();
+    persistSessions();
+    renderSessionList();
+}
+
+function renderSessionList() {
+    const items = [...sessions].sort((a, b) => b.updated - a.updated).map(s => {
+        const li = document.createElement("div");
+        li.className = "list-group-item list-group-item-action d-flex align-items-center gap-3 session-item";
+        li.classList.toggle("active", s.id === currentSessionId);
+        li.tabIndex = 0;
+        li.setAttribute("role", "button");
+        li.title = s.name || "Untitled";
+        const icon = document.createElement("i");
+        icon.className = "bi bi-file-earmark-text";
+        icon.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.className = "sidebar-label session-name flex-grow-1 text-truncate";
+        label.textContent = s.name || "Untitled";
+        const del = document.createElement("button");
+        del.type = "button";
+        del.className = "btn-text btn-icon sidebar-label session-delete";
+        del.title = "Delete session";
+        del.setAttribute("aria-label", "Delete session");
+        del.innerHTML = '<i class="bi bi-trash" aria-hidden="true"></i>';
+        del.addEventListener("click", e => {
+            e.stopPropagation();
+            deleteSession(s.id);
+        });
+        li.append(icon, label, del);
+        li.addEventListener("click", () => switchSession(s.id));
+        li.addEventListener("keydown", e => {
+            if (e.target === li && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                switchSession(s.id);
+            }
+        });
+        return li;
+    });
+    sessionList.replaceChildren(...items);
+}
+
+function activateSession(id) {
+    const session = sessions.find(s => s.id === id);
+    currentSessionId = id;
+    sessionNameInput.value = session.name;
+    applyState(session.state);
+    renderSessionList();
+}
+
+function switchSession(id) {
+    if (id === currentSessionId) return;
+    saveState();
+    activateSession(id);
+}
+
+export function newSession() {
+    saveState();
+    const session = { id: newId(), name: "", updated: Date.now(), state: emptyState() };
+    sessions.push(session);
+    activateSession(session.id);
+    sessionNameInput.focus();
+}
+
+function deleteSession(id) {
+    const session = sessions.find(s => s.id === id);
+    if (!session || !confirm(`"${session.name || "Untitled"}" oturumu silinsin mi?`)) return;
+    sessions = sessions.filter(s => s.id !== id);
+    if (!sessions.length) sessions.push({ id: newId(), name: "", updated: Date.now(), state: emptyState() });
+    if (id === currentSessionId) activateSession([...sessions].sort((a, b) => b.updated - a.updated)[0].id);
+    else { persistSessions(); renderSessionList(); }
+}
+
+sessionNameInput.addEventListener("input", () => {
+    const session = sessions.find(s => s.id === currentSessionId);
+    if (!session) return;
+    session.name = sessionNameInput.value.trim();
+    session.updated = Date.now();
+    persistSessions();
+    renderSessionList();
+});
+
+function loadSessions() {
+    try {
+        const data = JSON.parse(localStorage.getItem(SESSIONS_KEY));
+        if (Array.isArray(data?.sessions)) {
+            sessions = data.sessions.filter(s => s && typeof s.id === "string" && SUPPORTED_VERSIONS.includes(s.state?.version) && Array.isArray(s.state.pages) && s.state.pages.length)
+                .map(s => ({ id: s.id, name: typeof s.name === "string" ? s.name : "", updated: s.updated || 0, state: s.state }));
+            if (sessions.length) return sessions.some(s => s.id === data.currentId) ? data.currentId : sessions[0].id;
+        }
+    } catch { /* corrupt data: start fresh */ }
+    // Migrate the legacy single-workspace state, if any
+    sessions = [{ id: newId(), name: "", updated: Date.now(), state: loadState() ?? emptyState() }];
+    return sessions[0].id;
+}
+
 export function downloadJson() {
-    const blob = new Blob([JSON.stringify(getState(), null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ ...getState(), name: sessionNameInput.value.trim() }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -42,7 +155,7 @@ export function downloadJson() {
 function loadState() {
     try {
         const state = JSON.parse(localStorage.getItem(STATE_KEY));
-        if (state?.version === FORMAT_VERSION && Array.isArray(state.pages) && state.pages.length) return state;
+        if (SUPPORTED_VERSIONS.includes(state?.version) && Array.isArray(state.pages) && state.pages.length) return state;
     } catch { /* corrupt data: start fresh */ }
     return null;
 }
@@ -235,17 +348,17 @@ importInput.addEventListener("change", async () => {
     if (!file) return;
     try {
         const state = JSON.parse(await file.text());
-        if (state?.version !== FORMAT_VERSION) throw new Error("unsupported version");
+        if (!SUPPORTED_VERSIONS.includes(state?.version)) throw new Error("unsupported version");
         if (!Array.isArray(state.pages) || !state.pages.length) throw new Error("invalid");
         applyState(state);
+        // v2 files carry the session name; v1 files have none
+        if (typeof state.name === "string") {
+            sessionNameInput.value = state.name;
+            sessionNameInput.dispatchEvent(new Event("input"));
+        }
     } catch {
         alert("Geçersiz JSON dosyası veya desteklenmeyen sürüm: içe aktarılamadı.");
     }
 });
 
-const saved = loadState();
-if (saved) {
-    applyState(saved);
-} else {
-    addPage();
-}
+activateSession(loadSessions());

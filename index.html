@@ -23,13 +23,18 @@
             <button id="sidebarToggle" class="btn-text btn-icon" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle sidebar">
                 <i class="bi bi-list fs-4" aria-hidden="true"></i>
             </button>
-            <a class="navbar-brand m-0" href="#">Paper V2</a>
+            <input id="sessionName" class="form-control session-name-input" type="text" placeholder="Paper V2" maxlength="80" aria-label="Session name" autocomplete="off">
         </div>
 
         <div class="d-flex align-items-center gap-2">
-            <button id="addPage" class="btn-solid theme-primary" type="button" title="New workspace" aria-label="New workspace">
+            <button id="newSession" class="btn-solid theme-primary" type="button" title="New session" aria-label="New session">
+                <i class="bi bi-file-earmark-plus" aria-hidden="true"></i>
+                <span class="d-none sm:d-inline">New session</span>
+            </button>
+
+            <button id="addPage" class="btn-outline" type="button" title="New workspace" aria-label="New workspace">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i>
-                <span class="d-none sm:d-inline">New</span>
+                <span class="d-none sm:d-inline">Page</span>
             </button>
 
             <button id="downloadJson" class="btn-outline" type="button" title="Download JSON" aria-label="Download JSON">
@@ -91,6 +96,10 @@
 
                     </div>
                 </nav>
+                <div class="sidebar-sessions mt-auto border-top">
+                    <div class="sidebar-section-title sidebar-label">Sessions</div>
+                    <div id="sessionList" class="list-group list-group-flush" aria-label="Sessions"></div>
+                </div>
                 <!-- <div class="sidebar-user mt-auto d-flex align-items-center gap-2">
                     <span class="sidebar-avatar" aria-hidden="true"><i class="bi bi-person-fill"></i></span>
                     <span class="sidebar-user-name">mdo</span>

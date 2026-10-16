@@ -1,6 +1,7 @@
-export function initializeHeader({ addPage, downloadJson, openImport, printPages, setOrientation }) {
+export function initializeHeader({ addPage, downloadJson, newSession, openImport, printPages, setOrientation }) {
     const orientationButtons = document.querySelectorAll("[data-orientation]");
 
+    document.getElementById("newSession").addEventListener("click", newSession);
     document.getElementById("addPage").addEventListener("click", addPage);
     document.getElementById("downloadJson").addEventListener("click", downloadJson);
     document.getElementById("importJson").addEventListener("click", openImport);
